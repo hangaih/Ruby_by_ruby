@@ -1,11 +1,11 @@
 require "minruby"
+
 def evaluate(tree, genv, lenv)
   case tree[0]
   when "lit"
     tree[1]
   when "+"
     evaluate(tree[1], genv, lenv) + evaluate(tree[2], genv, lenv)
-    env["plus_count"] = env["plus_count"] + 1 # 5.7.2 練習問題の答え
   when "-"
     evaluate(tree[1], genv, lenv) - evaluate(tree[2], genv, lenv)
   when "*"
@@ -18,6 +18,30 @@ def evaluate(tree, genv, lenv)
     evaluate(tree[1], genv, lenv) > evaluate(tree[2], genv, lenv)
   when "=="
     evaluate(tree[1], genv, lenv) == evaluate(tree[2], genv, lenv)
+  when "stmts"
+    i = 1
+    last = nil
+    while tree[i]
+      last = evaluate(tree[i], genv, lenv)
+      i = i + 1
+    end
+    last
+  when "var_assign"
+    lenv[tree[1]] = evaluate(tree[2], genv, lenv)
+  when "func_def"
+    genv[tree[1]] = ["user_defined", tree[2], tree[3]]
+  when "var_ref"
+    lenv[tree[1]]
+  when "if"
+    if evaluate(tree[1], genv, lenv)
+      evaluate(tree[2], genv, lenv)
+    else
+      evaluate(tree[3], genv, lenv)
+    end
+  when "while"
+    while evaluate(tree[1], genv, lenv)
+      evaluate(tree[2], genv, lenv)
+    end
   when "func_call"
     args = []
     i = 0
@@ -29,32 +53,15 @@ def evaluate(tree, genv, lenv)
     if mhd[0] == "builtin"
       minruby_call(mhd[1], args)
     else
-      #埋める
+      new_lenv = {}
+      params = mhd[1]
+      i = 0
+      while params[i]
+        new_lenv[params[i]] = args[i]
+        i = i + 1
+      end
+      evaluate(mhd[2], genv, new_lenv)
     end
-  when "stmts"
-    i = 1
-    last = nil
-    while tree[i]
-      last = evaluate(tree[i], genv, lenv)
-      i = i + 1
-    end
-    last
-  when "var_assign"
-    env[tree[1]] = evaluate(tree[2], genv, lenv)
-  when "var_ref"
-    env[tree[1]]
-  when "if"
-    if evaluate(tree[1], genv, lenv)
-      evaluate(tree[2], genv, lenv)
-    else
-      evaluate(tree[3], genv, lenv)
-    end
-  when "while"
-    while evaluate(tree[1], genv, lenv)
-      evaluate(tree[2], genv, lenv)
-    end
-  else
-    pp(tree) #5.7.3 練習問題の答え
   end
 end
   
@@ -63,9 +70,6 @@ str = minruby_load()
 # ②計算式の文字列を計算の木に変換する
 tree = minruby_parse(str)
 # ③計算の木を実行（計算）する
-genv = {"p" => ["builtin", "p"]}
+genv = { "p" => ["builtin", "p"]}
 lenv = {}
 evaluate(tree, genv, lenv)
-
-
-
